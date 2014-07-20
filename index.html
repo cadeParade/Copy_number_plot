@@ -25,7 +25,7 @@ body {
   position: absolute;
   width: 200px;
   height: 28px;
-  pointer-events: none;
+  /*pointer-events: none;*/
 }
 </style>
 <body>
@@ -88,7 +88,6 @@ var tooltip = d3.select("body").append("div")
 
 // load data
 d3.csv("cbs_seg.csv", function(segs_error, data) {
-   // console.log(data)
   // change string (from CSV) into number format
   d3.csv('chrom_length.csv', function(chroms_error, chroms_data){
     chroms_data.forEach(function(d){
@@ -122,12 +121,6 @@ d3.csv("cbs_seg.csv", function(segs_error, data) {
         .attr("class", "x axis")
         .attr("transform", "translate(0," + height + ")")
         .call(xAxis)
-      .append("text")
-        .attr("class", "label")
-        .attr("x", width)
-        .attr("y", -6)
-        .style("text-anchor", "end")
-        .text("Position");
 
     // y-axis
     svg.append("g")
@@ -140,44 +133,6 @@ d3.csv("cbs_seg.csv", function(segs_error, data) {
         .attr("dy", ".71em")
         .style("text-anchor", "end")
         .text("seg mean");
-
-    // draw dots
-    svg.selectAll(".dot")
-        .data(data)
-      .enter().append("circle")
-        // .attr("class", "dot")
-        // .attr("r", 3.5)
-        // .attr("cx", xMap)
-        // .attr("cy", yMap)
-        // .style("fill", function(d) { return color(cValue(d));})
-        .style('opacity', 0)
-        .on("mouseover", function(d) {
-            tooltip.transition()
-                 .duration(200)
-                 .style("opacity", .9);
-            tooltip.html(d["chrom"] + "<br/> (" + xValue(d)
-              + ", " + yValue(d) + ")")
-                 .style("left", (d3.event.pageX + 5) + "px")
-                 .style("top", (d3.event.pageY - 28) + "px");
-        })
-        .on("mouseout", function(d) {
-            tooltip.transition()
-                 .duration(500)
-                 .style("opacity", 0);
-        });
-
-    //CN average
-    svg.selectAll()
-        .data(data)
-      .enter().append("line")
-        .attr('class', 'line')
-        .attr("x1", function(d){return xMapNum(d['loc.start.adj']);})
-        .attr("y1", function(d){return yMapNum(d['seg.mean']);})
-        .attr("x2", function(d){return xMapNum(d['loc.end.adj']);})
-        .attr("y2", function(d){return yMapNum(d['seg.mean']);})
-        .attr("stroke-width", 2)
-        .attr("stroke", "black")
-
 
   // chromosome rectangles
    var chr_rects = svg.selectAll()
@@ -203,27 +158,41 @@ d3.csv("cbs_seg.csv", function(segs_error, data) {
       .attr('y', margin.top - 10);
 
 
-    // // draw legend
-    // var legend = svg.selectAll(".legend")
-    //     .data(color.domain())
-    //   .enter().append("g")
-    //     .attr("class", "legend")
-    //     .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+   var cn_lines = svg.selectAll()
+      .data(data)
+    .enter().append("g")
 
-    // // draw legend colored rectangles
-    // legend.append("rect")
-    //     .attr("x", width - 18)
-    //     .attr("width", 18)
-    //     .attr("height", 18)
-    //     .style("fill", color);
+      // these are the lines that display
+      cn_lines.append("line")
+        .attr('class', 'line')
+        .attr("x1", function(d){return xMapNum(d['loc.start.adj']);})
+        .attr("y1", function(d){return yMapNum(d['seg.mean']);})
+        .attr("x2", function(d){return xMapNum(d['loc.end.adj']);})
+        .attr("y2", function(d){return yMapNum(d['seg.mean']);})
+        .attr("stroke-width", 2)
+        .attr("stroke", "black")
 
-    // // draw legend text
-    // legend.append("text")
-    //     .attr("x", width - 24)
-    //     .attr("y", 9)
-    //     .attr("dy", ".35em")
-    //     .style("text-anchor", "end")
-    //     .text(function(d) { return d;})
+      //these lines are invisible but wider than display lines to make mouseover easier
+      cn_lines.append("line")
+        .attr('class', 'line')
+        .attr("x1", function(d){return xMapNum(d['loc.start.adj']);})
+        .attr("y1", function(d){return yMapNum(d['seg.mean']);})
+        .attr("x2", function(d){return xMapNum(d['loc.end.adj']);})
+        .attr("y2", function(d){return yMapNum(d['seg.mean']);})
+        .attr("stroke-width", 10)
+        .attr("stroke", "black")
+        .attr("opacity", 0)
+        .on("mouseover", function(d) {
+          tooltip.transition()
+               .duration(100)
+               .style("opacity", .9);
+          tooltip.html(
+            d["chrom"] + ": " + d['loc.start'] + " - " + d['loc.end'] + "<br />"
+            // + "<a href='"
+            + "<a target='_blank' href='https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position="  + d['chrom'] + "%3A" + d['loc.start'] + "-" + d['loc.end'] + "'> go to UCSC human genome browser </a>")
+               .style("left", (d3.event.pageX ) + "px")
+               .style("top", (d3.event.pageY + 10) + "px");
+        })
 
     });
 });
