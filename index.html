@@ -30,42 +30,22 @@ body {
 </style>
 <body>
 <script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="helpers.js"></script>
 
 <script>
-var lookup = function(arr, key){
-  //rearranges array of objects into object with key as lookup for object
-  var lookup_h = {};
-  for (var i = 0, len = arr.length; i < len; i++) {
-      lookup_h[arr[i][key]] = arr[i];
-  }
-  return lookup_h;
-}
-
-var genomeLength = 3088269832;
-
 var margin = {top: 20, right: 20, bottom: 30, left: 40},
     width = 960 - margin.left - margin.right,
     height = 500 - margin.top - margin.bottom;
 
-/*
- * value accessor - returns the value to encode for a given data object.
- * scale - maps value to a visual display encoding, such as a pixel position.
- * map function - maps from data value to display value
- * axis - sets up axis
- */
-
-
 // setup x
 var xValue = function(d) { return d['loc.start.adj'];}, // data -> value
     xScale = d3.scale.linear().range([0, width])
-    // xMap = function(d) { return xScale(xValue(d));}, // data -> display
     xMapNum = function(num) {return xScale(num)}
-    xAxis = d3.svg.axis().scale(xScale).orient("bottom");
+    xAxis = d3.svg.axis().scale(xScale).orient("bottom").ticks(0);
 
 // setup y
 var yValue = function(d) { return d['seg.mean'];}, // data -> value
     yScale = d3.scale.linear().range([height, 0]), // value -> display
-    // yMap = function(d) { return yScale(yValue(d));}, // data -> display
     yMapNum = function(num) {return yScale(num)}
     yAxis = d3.svg.axis().scale(yScale).orient("left");
 
@@ -83,7 +63,7 @@ var svg = d3.select("body").append("svg")
 // add the tooltip area to the webpage
 var tooltip = d3.select("body").append("div")
     .attr("class", "tooltip")
-    .style("opacity", 0);
+    .style("opacity", 1);
 
 
 // load data
@@ -91,24 +71,12 @@ d3.csv("cbs_seg.csv", function(segs_error, data) {
   // change string (from CSV) into number format
   d3.csv('chrom_length.csv', function(chroms_error, chroms_data){
     chroms_data.forEach(function(d){
-      if( d['chrom'] === 'X'){d['chrom'] = 23}
-      if( d['chrom'] === 'Y'){d['chrom'] = 24}
-      d['chrom'] = +d['chrom']
-      d['length'] = +d['length']
+      process_chrom_data(d)
     });
     durp = lookup(chroms_data, 'chrom')
 
-    data.forEach(function(d) { //convert to number and calculate adjusted start and end points
-      d['chrom_num'] = d['chrom'].substring(3);
-      if( d['chrom_num'] === 'X'){d['chrom_num'] = 23}
-      if( d['chrom_num'] === 'Y'){d['chrom_num'] = 24}
-      d['loc.start'] = +d['loc.start'];
-      d['loc.end'] = +d['loc.end'];
-      d['seg.mean'] = +d['seg.mean'];
-
-      var offset = +durp[d['chrom_num']].offset
-      d['loc.start.adj'] = d['loc.start'] + offset;
-      d['loc.end.adj'] = d['loc.end'] + offset;
+    data.forEach(function(d) {
+      process_seg_data(d)
     });
 
 
@@ -138,6 +106,7 @@ d3.csv("cbs_seg.csv", function(segs_error, data) {
    var chr_rects = svg.selectAll()
       .data(chroms_data)
     .enter().append("g")
+      .attr('class', 'chrom-rect')
 
     chr_rects.append('rect')
       .attr("x", function(d){return xMapNum(+d['offset'])})
@@ -161,10 +130,12 @@ d3.csv("cbs_seg.csv", function(segs_error, data) {
    var cn_lines = svg.selectAll()
       .data(data)
     .enter().append("g")
+      .attr('class', 'cn-lines')
 
       // these are the lines that display
       cn_lines.append("line")
-        .attr('class', 'line')
+        .attr('class', 'display-line')
+        .attr('data-range', function(d){return display_genome_range(d)})
         .attr("x1", function(d){return xMapNum(d['loc.start.adj']);})
         .attr("y1", function(d){return yMapNum(d['seg.mean']);})
         .attr("x2", function(d){return xMapNum(d['loc.end.adj']);})
@@ -180,20 +151,18 @@ d3.csv("cbs_seg.csv", function(segs_error, data) {
         .attr("x2", function(d){return xMapNum(d['loc.end.adj']);})
         .attr("y2", function(d){return yMapNum(d['seg.mean']);})
         .attr("stroke-width", 10)
-        .attr("stroke", "black")
+        .attr("stroke", "red")
         .attr("opacity", 0)
         .on("mouseover", function(d) {
+          selectedLine(d);
           tooltip.transition()
                .duration(100)
                .style("opacity", .9);
-          tooltip.html(
-            d["chrom"] + ": " + d['loc.start'] + " - " + d['loc.end'] + "<br />"
-            // + "<a href='"
-            + "<a target='_blank' href='https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position="  + d['chrom'] + "%3A" + d['loc.start'] + "-" + d['loc.end'] + "'> go to UCSC human genome browser </a>")
+          tooltip.html( display_genome_range(d) + "<br />"
+            + "<a target='_blank' href='" + make_ucsc_url(d) + "'> go to UCSC human genome browser </a>")
                .style("left", (d3.event.pageX ) + "px")
                .style("top", (d3.event.pageY + 10) + "px");
-        })
-
+        });
     });
 });
 
