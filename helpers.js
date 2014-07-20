@@ -2,14 +2,14 @@ var genomeLength = 3088269832;
 
 
 var selectedLine = function(d){
-  d3.selectAll('.display-line').attr("stroke", "black");
-  return d3.selectAll('[data-range="' + display_genome_range(d) + '"]').attr("stroke", 'red');
+  d3.selectAll('.display-line').attr("stroke", "red");
+  return d3.selectAll('[data-range="' + display_genome_range(d) + '"]').attr("stroke", 'blue');
 };
 
 var check_x_y = function(d, field){
   if(d[field] === 'X'){return 23;}
   if(d[field] === 'Y'){return 24;}
-  else{return d[field];}
+  else{return +d[field];}
 };
 
 var process_chrom_data = function(d){
@@ -33,6 +33,15 @@ var process_seg_data = function(d){
 
   return(d);
 };
+
+var process_reads_data = function(d){
+  d['chrom_num'] = check_x_y(d, 'chrom_num');
+  d['pos'] = +d['pos'];
+  d['pos_adj'] = +d['pos_adj'];
+  d['seg_mean'] = +d['seg_mean'];
+  return(d)
+}
+
 
 var display_genome_range = function(d){
   return  d["chrom"] + ":" + d['loc.start'] + "-" + d['loc.end'];
